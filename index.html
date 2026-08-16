@@ -639,7 +639,15 @@ const BASE_REAGENT_REQUIREMENTS = {
   "Organ Mender":       [{ reagentName:"Mandragora",   qty:1, reason:"Required to produce Mandragora Oil (the base)" }],
   "St. Felder's Vitality": [{ reagentName:"Blood Lotus", qty:1, reason:"Required to produce Blood Lotus Broth (the base)" }],
   "Stag's Stamina":     [{ reagentName:"King's Ivy",   qty:1, reason:"Explicitly listed as a direct ingredient" }],
+  "Solomon's Salts":    [
+    { reagentName:"Mortal Heart",  qty:1, reason:"Explicitly listed as a direct ingredient (special lore item)" },
+    { reagentName:"Vampire Dust",  qty:1, reason:"Explicitly listed as a direct ingredient (special lore item)" },
+  ],
 };
+
+// Physical ingredients that exist in lore but have no reagent entry
+// (used by BASE_REAGENT_REQUIREMENTS for non-REAGENTS items)
+const LORE_ONLY_ITEMS = new Set(["Mortal Heart","Vampire Dust"]);
 
 // =====================================================================
 // DATA: EXTRACTION METHODS
@@ -1255,6 +1263,24 @@ const RECIPES = [
   base:"Lifeblood (full recipe) + 16 Redstone Dust",
   desc:"A potent red oil produced by combining a full measure of Lifeblood with 16 redstone dust.",
   reqs:[{sign:"Mundane",name:"Connection",count:3},{sign:"Mundane",name:"Life",count:3},{sign:"Mundane",name:"Growth",count:2},{sign:"Mundane",name:"Strength",count:1},{sign:"Mundane",name:"Balance",count:2},{sign:"Mundane",name:"Endurance",count:3},{sign:"Mundane",name:"Grace",count:2},{sign:"Mundane",name:"Order",count:3},{sign:"Mundane",name:"Vigour",count:3},{sign:"Mundane",name:"Instability",count:3},{sign:"Mundane",name:"Rage",count:2}]},
+// === COMBATIVE ===
+{ name:"Solomon's Salts", cat:"Combative", tier:3, st:true,
+  base:"Saltwater",
+  desc:"When applied to the open wound of a Corcitură, these red salts feel as hot coals, amplifying in pain and causing their blood to bubble agonizingly as the salt dissolves into it.",
+  reqs:[{sign:"Aether",name:"Instability",count:4},{sign:"Earth",name:"Poison",count:2},{sign:"Earth",name:"Death",count:2},{sign:"Mundane",name:"Burning",count:2}]},
+// === AESTHETIC (FORGING OILS) ===
+{ name:"Seaforging Oil", cat:"Aesthetic", tier:2, st:false,
+  base:"Oil",
+  desc:"Grants an aqueous effect to an item — light refracts and ripples like a sunlit pool, with thin ribbons of water or seafoam trailing behind swings. Imparts an aquamarine tint. Must rest by the ocean for [1] narrative hour. Cannot be applied to Ironwood, Fulgurglass, Arcanium, Azhl, Rokodra, Morion or Resonantium.",
+  reqs:[{sign:"Mundane",name:"Light",count:2},{sign:"Mundane",name:"Clarity",count:2},{sign:"Mundane",name:"Endurance",count:1},{sign:"Water",name:"Grace",count:3}]},
+{ name:"Skyforging Oil", cat:"Aesthetic", tier:2, st:false,
+  base:"Oil",
+  desc:"Grants a windy effect to items — translucent wind surges about the weapon (colorable with optional dye). The metal's grain ripples as if in a breeze, and swings kick up wind capable of billowing cloaks. Must be placed above cloud level for [1] narrative hour. Cannot be applied to Ironwood, Fulgurglass, Arcanium, Rokodra, Morion or Resonantium.",
+  reqs:[{sign:"Mundane",name:"Peace",count:3},{sign:"Mundane",name:"Purity",count:2},{sign:"Air",name:"Agility",count:4}]},
+{ name:"Moonforging Oil", cat:"Aesthetic", tier:2, st:false,
+  base:"Oil",
+  desc:"Grants a moonlight glow to an item — edges shine brighter than the base, with dark crater-like spots scattered across the surface. The glow shines brightest at night in the hue of the current lunar phase; swung in an arc, it leaves a fading trail shaped by that phase. Can be used on blades or as tattoo ink.",
+  reqs:[{sign:"Mundane",name:"Light",count:3},{sign:"Mundane",name:"Dark",count:2},{sign:"Mundane",name:"Vigour",count:2}]},
 ];
 
 // =====================================================================
@@ -1304,6 +1330,7 @@ function renderBaseReagentSection(recipeName) {
   if (!reqs || !reqs.length) return "";
 
   let rows = reqs.map(req => {
+    const isLoreOnly = LORE_ONLY_ITEMS.has(req.reagentName);
     const state = reagentState[req.reagentName];
     const isUnavail = state && state.unavailable;
     const unavailTag = isUnavail
@@ -1313,17 +1340,21 @@ function renderBaseReagentSection(recipeName) {
     const nodedTag = reagentData && reagentData.noded
       ? `<span class="st-badge">Noded</span>`
       : "";
+    const loreTag = isLoreOnly
+      ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:2px;border:1px solid var(--aether-border);background:var(--aether-bg);color:var(--aether-text);font-family:'Cinzel',serif;letter-spacing:0.04em;margin-left:4px">Lore Item</span>`
+      : "";
     return `<div class="base-reagent-row${isUnavail ? " base-unavail" : ""}">
       <div class="base-reagent-info">
-        <div class="base-reagent-name">${req.reagentName} ${unavailTag}${nodedTag}</div>
+        <div class="base-reagent-name">${req.reagentName} ${unavailTag}${nodedTag}${loreTag}</div>
         <div class="base-reagent-note">${req.reason}</div>
       </div>
       <div class="base-reagent-qty">×${req.qty}</div>
     </div>`;
   }).join("");
 
+  const hasMultiple = reqs.length > 1;
   return `<div class="base-reagent-section">
-    <div class="base-reagent-label">Mandatory Physical Ingredient</div>
+    <div class="base-reagent-label">Mandatory Physical Ingredient${hasMultiple ? "s" : ""}</div>
     ${rows}
   </div>`;
 }
@@ -1944,8 +1975,9 @@ function renderBatchPlan() {
 
   if (Object.keys(batchBaseReqs).length > 0) {
     html += `<div class="batch-base-section">
-      <div class="batch-base-label">Mandatory Ingredients</div>`;
+      <div class="batch-base-label">Mandatory Physical Ingredients</div>`;
     Object.values(batchBaseReqs).forEach(req => {
+      const isLoreOnly = LORE_ONLY_ITEMS.has(req.reagentName);
       const state = reagentState[req.reagentName];
       const isUnavail = state && state.unavailable;
       const reagentData = REAGENTS.find(r => r.name === req.reagentName);
@@ -1953,13 +1985,16 @@ function renderBatchPlan() {
         ? `<span class="st-badge" style="margin-left:4px">Noded</span>` : "";
       const unavailTag = isUnavail
         ? `<span class="unavail-tag" style="margin-left:4px">Don't have</span>` : "";
+      const loreTag = isLoreOnly
+        ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:2px;border:1px solid var(--aether-border);background:var(--aether-bg);color:var(--aether-text);font-family:'Cinzel',serif;letter-spacing:0.04em;margin-left:4px">Lore Item</span>`
+        : "";
       const fromNote = req.fromRecipes.map(n => {
         const slot = batchFind(n);
         return slot && slot.qty > 1 ? `${n} ×${slot.qty}` : n;
       }).join(", ");
       html += `<div class="batch-base-item${isUnavail?" base-unavail":""}">
         <div>
-          <div class="batch-base-item-name">${req.reagentName}${nodedTag}${unavailTag}</div>
+          <div class="batch-base-item-name">${req.reagentName}${nodedTag}${unavailTag}${loreTag}</div>
           <div class="batch-base-item-from">For: ${fromNote}</div>
         </div>
         <div class="batch-base-item-qty">×${req.totalQty}</div>
