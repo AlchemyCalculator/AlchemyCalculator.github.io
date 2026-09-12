@@ -1,1 +1,1 @@
-Test1
+LOTC's non-official Alchemy Calculator
